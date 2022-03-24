@@ -1,0 +1,53 @@
+---
+- name: Demo Playbook
+  hosts: demo-001
+  tasks:
+  - name: Make shure that git and vim is installed.
+    dnf:
+      name:
+        - vim
+        - git
+      state: present
+      update_cache: yes
+    become: yes
+    when: ansible_facts['os_family'] == "RedHat"
+
+  - name: Make shure that git and vim is installed.
+    apt:
+      name:
+        - vim
+        - git
+      state: present
+      update_cache: yes
+    become: yes
+    when: ansible_facts['os_family'] == "Debian"
+
+  - name: Create directory's for vim.
+    become: yes
+    become_user: "{{ item }}"
+    file:
+      path: ~/.vim/pack/vendor/start
+      mode: 0755
+      owner: "{{ item }}"
+      group: "{{ item }}"
+      state: directory
+    loop: "{{ vim_user }}"
+
+  - name: Deploy plugins.
+    git:
+      dest: "~/.vim/pack/vendor/start/{{ item.1.0 }}"
+      repo: "{{ item.1.1 }}"
+      clone: yes
+      update: yes
+      recursive: no
+    become: yes
+    become_user: "{{ item.0 }}"
+    loop: "{{ vim_user | product(vim_plugin_names | zip(vim_plugin_urls)) | list }}"
+
+  - name: Create .vimrc file from template.
+    ansible.builtin.template:
+      src: vimrc.j2
+      dest: ~/.vimrc
+    become: yes
+    become_user: "{{ item }}"
+    loop: "{{ vim_user }}"
